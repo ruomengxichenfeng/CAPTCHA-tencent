@@ -42,5 +42,7 @@ WantedBy=multi-user.target
 
 
 systemctl daemon-reload
+
 systemctl enable --now captcha-gateway
+
 systemctl status captcha-gateway
