@@ -10,9 +10,9 @@ cat  /etc/systemd/system/captcha-gateway.service
 
 [Unit]
 
-描述=腾讯验证码网关
+Description=Tencent Captcha Gateway
 
-依赖=network.target
+After=network.target
 
 [Service]
 
@@ -22,11 +22,11 @@ Environment=CAPTCHA_APP_ID=*****
 
 Environment=APP_SECRET_KEY=***** #'你的AppSecretKey'
 
-环境=TENCENT_SECRET_ID=**** #'你的SecretId'
+Environment=TENCENT_SECRET_ID=**** #'你的SecretId'
 
-环境=TENCENT_SECRET_KEY=**** #'你的SecretKey'
+Environment=TENCENT_SECRET_KEY=**** #'你的SecretKey'
 
-环境=COOKIE_SECRET=***** #openssl rand -hex 32
+Environment=COOKIE_SECRET=***** #openssl rand -hex 32
 
 Environment=COOKIE_SECURE=1
 
