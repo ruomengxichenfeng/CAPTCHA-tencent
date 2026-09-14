@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>安全验证</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: #f5f6f8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .box {
+    background: #fff; padding: 36px 32px; border-radius: 12px; text-align: center;
+    width: 360px; max-width: 92vw; box-shadow: 0 8px 30px rgba(0,0,0,.08);
+  }
+  h1 { margin: 0 0 8px; font-size: 20px; color: #1f2329; }
+  p { margin: 0 0 20px; font-size: 14px; color: #646a73; }
+  #msg { min-height: 20px; margin: 0 0 16px; font-size: 13px; }
+  #msg.ok { color: #00a870; }
+  #msg.err { color: #e34d59; }
+  button {
+    width: 100%; padding: 12px 0; border: none; border-radius: 8px; cursor: pointer;
+    background: #0052d9; color: #fff; font-size: 15px;
+  }
+  button:hover { background: #0042b0; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>安全验证</h1>
+  <p>请完成下方人机验证后您可继续浏览。。</p>
+  <div id="msg"></div>
+  <button id="btn" type="button">点击进行验证</button>
+</div>
+
+<script src="https://turing.captcha.qcloud.com/TJCaptcha.js"></script>
+<script>
+  var APP_ID = '__CAPTCHA_APP_ID__';
+
+  function getBack() {
+    try {
+      var b = new URLSearchParams(location.search).get('back');
+      // 兼容前置 CDN/WAF 把 302 Location 二次编码的情况：最多再解两次，直到以 / 开头
+      for (var i = 0; i < 2 && b && b.charAt(0) !== '/'; i++) {
+        try { b = decodeURIComponent(b); } catch (e) { break; }
+      }
+      // 只允许站内相对路径：拒绝 // 或 /\ 开头的协议相对 URL / 反斜杠变体，并做同源校验
+      if (b && b.charAt(0) === '/' && b.charAt(1) !== '/' && b.charAt(1) !== '\\') {
+        var u = new URL(b, location.origin);
+        if (u.origin === location.origin) return u.pathname + u.search + u.hash;
+      }
+    } catch (e) {}
+    return '/';
+  }
+
+  function setMsg(t, ok) {
+    var el = document.getElementById('msg');
+    el.textContent = t;
+    el.className = 'msg' + (ok ? ' ok' : ' err');
+  }
+
+  function fnv32(str, seed) {
+    var h = seed >>> 0;
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return ('00000000' + (h >>> 0).toString(16)).slice(-8);
+  }
+
+  function getFp() {
+    var a = [];
+    a.push(navigator.userAgent || '');
+    a.push(navigator.language || '');
+    a.push(navigator.platform || '');
+    a.push((screen.width || '') + 'x' + (screen.height || ''));
+    a.push(screen.colorDepth || '');
+    a.push(new Date().getTimezoneOffset());
+    a.push(navigator.hardwareConcurrency || '');
+    a.push(navigator.maxTouchPoints || '');
+    try {
+      var c = document.createElement('canvas');
+      c.width = 220; c.height = 30;
+      var x = c.getContext('2d');
+      x.textBaseline = 'top';
+      x.font = '14px Arial';
+      x.fillStyle = '#f60';
+      x.fillRect(0, 0, 220, 30);
+      x.fillStyle = '#069';
+      x.fillText('captcha-fp-2943', 2, 15);
+      a.push(c.toDataURL());
+    } catch (e) {}
+    var raw = a.join('|');
+    return fnv32(raw, 0x811c9dc5) + fnv32(raw, 0x01000193);
+  }
+
+  function verify(res) {
+    fetch('/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticket: res.ticket, randstr: res.randstr, fp: getFp() })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d && d.ok) {
+        setMsg('验证通过，正在跳转…', true);
+        setTimeout(function () { location.href = getBack(); }, 300);
+      } else {
+        setMsg('校验未通过：' + ((d && d.error) || 'unknown'), false);
+      }
+    }).catch(function () {
+      setMsg('网络错误，请重试', false);
+    });
+  }
+
+  function callback(res) {
+    if (res.ret === 2) { // 用户主动关闭
+      setMsg('已取消验证，请重新验证', false);
+      return;
+    }
+    if (!res.ticket) {
+      setMsg('验证失败，请重试', false);
+      return;
+    }
+    setMsg('正在校验…', false);
+    verify(res);
+  }
+
+  function show() {
+    try {
+      if (typeof TencentCaptcha === 'undefined') {
+        setMsg('验证码脚本加载失败，请刷新页面重试', false);
+        return;
+      }
+      new TencentCaptcha(APP_ID, callback, { userLanguage: 'zh-cn' }).show();
+    } catch (e) {
+      setMsg('验证码加载异常，请刷新页面重试', false);
+    }
+  }
+
+  document.getElementById('btn').onclick = show;
+  show();
+</script>
+</body>
+</html>
