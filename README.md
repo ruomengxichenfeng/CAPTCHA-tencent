@@ -1,8 +1,8 @@
 # CAPTCHA-tencent
-https://cloud.tencent.com/document/sdk 腾讯云验证码使用
-
+https://cloud.tencent.com/document/sdk 腾讯云验证码搭配nginx使用
+    
 启动，也可以直接启动，注意带入变量
-
+    
 cat  /etc/systemd/system/captcha-gateway.service
 [Unit]
 Description=Tencent Captcha Gateway
